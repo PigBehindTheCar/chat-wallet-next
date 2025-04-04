@@ -1,15 +1,31 @@
 import { NextRequest } from "next/server";
 export const runtime = "edge";
 import { getCloudflareEnv } from "@/utils/env";
-export async function GET(request: NextRequest) {
-  const env = getCloudflareEnv();
-  const response = await env?.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-    prompt: "What is the origin of the phrase Hello, World",
-  });
 
-  return new Response(JSON.stringify(response, null, 2), {
-    headers: {
-      "Content-Type": "application/json",
-    },
+interface Message {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface RequestData {
+  messages?: Message[];
+}
+
+export async function POST(request: NextRequest) {
+  const env = getCloudflareEnv();
+  const data = (await request.json()) as RequestData;
+
+  const messages = data.messages;
+
+  const response = await env?.AI.run(
+    "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+    {
+      messages: messages,
+      stream: true,
+    }
+  );
+
+  return new Response(response, {
+    headers: { "content-type": "text/event-stream" },
   });
 }
