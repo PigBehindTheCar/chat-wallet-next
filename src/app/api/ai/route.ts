@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
 import { getCloudflareEnv } from "@/utils/env";
 
-export const runtime = "edge";
-
 interface Message {
   role: "system" | "user" | "assistant";
   content: string;
