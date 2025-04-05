@@ -11,7 +11,7 @@ interface RequestData {
 }
 
 export async function POST(request: NextRequest) {
-  const env = getCloudflareEnv();
+  const env = getCloudflareEnv() as any;
   const data = (await request.json()) as RequestData;
 
   const messages = data.messages;

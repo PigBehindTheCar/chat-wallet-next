@@ -4,7 +4,7 @@ type CloudflareContext = {
   cf: IncomingRequestCfProperties;
 };
 
-export function getCloudflareEnv(): Record<string, any> | undefined {
+export function getCloudflareEnv(): CloudflareEnv | undefined {
   return (
     (globalThis as any)[Symbol.for("__cloudflare-context__")] as
       | CloudflareContext

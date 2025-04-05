@@ -49,5 +49,12 @@
 	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
 	"ai": {
 		"binding": "AI"
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "hono2db",
+			"database_id": "3024fa66-3dd5-4d40-8ece-d325449e97a8"
+		}
+	]
 }
