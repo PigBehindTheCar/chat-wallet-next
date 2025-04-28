@@ -20,7 +20,7 @@ interface TransactionRequest {
 }
 
 // 模拟数据库中的交易数据
-const transactions: Transaction[] = [
+export const transactions: Transaction[] = [
 	{
 		id: "1",
 		date: "05.30.2025",
@@ -148,7 +148,7 @@ export async function GET() {
 	})
 }
 
-// 添加新交易的POST请求处理（实际项目中会添加到数据库）
+// 添加新交易的POST请求处理
 export async function POST(request: Request) {
 	const body = (await request.json()) as TransactionRequest
 

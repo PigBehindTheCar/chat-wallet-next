@@ -30,6 +30,9 @@ importers:
       '@eslint/eslintrc':
         specifier: ^3
         version: 3.3.1
+      '@next/eslint-plugin-next':
+        specifier: ^15.3.1
+        version: 15.3.1
       '@opennextjs/cloudflare':
         specifier: 0.5.x
         version: 0.5.12(wrangler@4.7.1(@cloudflare/workers-types@4.20250404.0))
@@ -51,6 +54,9 @@ importers:
       eslint-config-next:
         specifier: 15.2.4
         version: 15.2.4(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2)
+      eslint-plugin-react-hooks:
+        specifier: ^5.2.0
+        version: 5.2.0(eslint@9.23.0(jiti@2.4.2))
       tailwindcss:
         specifier: ^4
         version: 4.1.2
@@ -967,6 +973,9 @@ packages:
 
   '@next/eslint-plugin-next@15.2.4':
     resolution: {integrity: sha512-O8ScvKtnxkp8kL9TpJTTKnMqlkZnS+QxwoQnJwPGBxjBbzd6OVVPEJ5/pMNrktSyXQD/chEfzfFzYLM6JANOOQ==}
+
+  '@next/eslint-plugin-next@15.3.1':
+    resolution: {integrity: sha512-oEs4dsfM6iyER3jTzMm4kDSbrQJq8wZw5fmT6fg2V3SMo+kgG+cShzLfEV20senZzv8VF+puNLheiGPlBGsv2A==}
 
   '@next/swc-darwin-arm64@14.2.26':
     resolution: {integrity: sha512-zDJY8gsKEseGAxG+C2hTMT0w9Nk9N1Sk1qV7vXYz9MEiyRoF5ogQX2+vplyUMIfygnjn9/A04I6yrUTRTuRiyQ==}
@@ -4791,6 +4800,10 @@ snapshots:
   '@next/env@14.2.26': {}
 
   '@next/eslint-plugin-next@15.2.4':
+    dependencies:
+      fast-glob: 3.3.1
+
+  '@next/eslint-plugin-next@15.3.1':
     dependencies:
       fast-glob: 3.3.1
 

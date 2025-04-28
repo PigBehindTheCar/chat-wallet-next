@@ -22,6 +22,12 @@ interface SingleTransactionResponse {
 	message: string
 }
 
+// 基础响应格式
+interface BaseResponse {
+	success: boolean
+	message: string
+}
+
 // 本地存储键
 const LOCAL_STORAGE_KEY = "wallet_transactions"
 const LAST_SYNC_KEY = "wallet_transactions_last_sync"
@@ -114,7 +120,7 @@ const fetchTransactionsFromAPI = async (): Promise<Transaction[]> => {
  */
 export const getTransactions = async (): Promise<Transaction[]> => {
 	// 首先从本地获取数据
-	let localTransactions = getLocalTransactions()
+	const localTransactions = getLocalTransactions()
 
 	// 如果本地有数据，先返回本地数据给UI使用
 	const hasLocalData = localTransactions.length > 0
@@ -175,5 +181,82 @@ export const addTransaction = async (
 	} catch (error) {
 		console.error("Error adding transaction:", error)
 		return null
+	}
+}
+
+/**
+ * 更新现有交易
+ */
+export const updateTransaction = async (
+	transaction: Transaction
+): Promise<Transaction | null> => {
+	try {
+		// 调用API更新交易
+		const response = await fetch(`/api/dummy/transactions/${transaction.id}`, {
+			method: "PUT",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(transaction),
+		})
+
+		const result = (await response.json()) as SingleTransactionResponse
+
+		if (result.success) {
+			// API更新成功，更新本地存储
+			const updatedTransaction = result.data
+			const localTransactions = getLocalTransactions()
+			const index = localTransactions.findIndex((t) => t.id === transaction.id)
+
+			if (index !== -1) {
+				localTransactions[index] = updatedTransaction
+				saveLocalTransactions(localTransactions)
+
+				// 通知所有监听器数据已更新
+				notifyUpdateListeners(localTransactions)
+			}
+
+			return updatedTransaction
+		}
+
+		return null
+	} catch (error) {
+		console.error("Error updating transaction:", error)
+		return null
+	}
+}
+
+/**
+ * 删除交易
+ */
+export const deleteTransaction = async (
+	transactionId: string
+): Promise<boolean> => {
+	try {
+		// 调用API删除交易
+		const response = await fetch(`/api/dummy/transactions/${transactionId}`, {
+			method: "DELETE",
+		})
+
+		const result = (await response.json()) as BaseResponse
+
+		if (result.success) {
+			// API删除成功，更新本地存储
+			const localTransactions = getLocalTransactions()
+			const updatedTransactions = localTransactions.filter(
+				(t) => t.id !== transactionId
+			)
+			saveLocalTransactions(updatedTransactions)
+
+			// 通知所有监听器数据已更新
+			notifyUpdateListeners(updatedTransactions)
+
+			return true
+		}
+
+		return false
+	} catch (error) {
+		console.error("Error deleting transaction:", error)
+		return false
 	}
 }

@@ -12,6 +12,8 @@ import {
 	Transaction,
 	getTransactions,
 	addTransaction,
+	updateTransaction,
+	deleteTransaction,
 	addTransactionUpdateListener,
 	removeTransactionUpdateListener,
 } from "@/app/services/transactionService"
@@ -20,6 +22,7 @@ import DateSelectionModal from "./DateSelectionModal"
 import NewTransactionModal from "./NewTransactionModal"
 import BatchTransactionModal from "./BatchTransactionModal"
 import { parseNaturalLanguage } from "@/app/services/naturalLanguageParser"
+import ConfirmationModal from "./ConfirmationModal"
 
 interface DateSelection {
 	year: number
@@ -108,15 +111,6 @@ const ExpenseTracker: React.FC = () => {
 	// 新交易Modal状态
 	const [showTransactionModal, setShowTransactionModal] = useState(false)
 
-	// 新交易表单数据
-	const [transactionForm, setTransactionForm] = useState<TransactionForm>({
-		category: EXPENSE_CATEGORIES[0],
-		note: "",
-		amount: "",
-		date: new Date().toISOString().split("T")[0], // 今天的日期，格式：YYYY-MM-DD
-		isExpense: true, // 默认为支出
-	})
-
 	// 当前年月
 	const currentYear = new Date().getFullYear()
 	const currentMonth = new Date().getMonth()
@@ -128,6 +122,14 @@ const ExpenseTracker: React.FC = () => {
 	})
 
 	const [customYear, setCustomYear] = useState<string>("")
+
+	// 新增用于编辑和删除的状态
+	const [editingTransaction, setEditingTransaction] =
+		useState<Transaction | null>(null)
+	const [showDeleteModal, setShowDeleteModal] = useState(false)
+	const [deletingTransactionId, setDeletingTransactionId] = useState<
+		string | null
+	>(null)
 
 	// 处理交易数据更新的回调
 	const handleTransactionsUpdate = useCallback(
@@ -207,7 +209,7 @@ const ExpenseTracker: React.FC = () => {
 			// 移除监听器以防内存泄漏
 			removeTransactionUpdateListener(handleTransactionsUpdate)
 		}
-	}, []) // 空依赖数组确保只执行一次
+	}, [handleTransactionsUpdate]) // 空依赖数组确保只执行一次
 
 	// 刷新交易列表的函数 - 用于添加新交易后调用
 	const refreshTransactions = useCallback(async () => {
@@ -236,13 +238,6 @@ const ExpenseTracker: React.FC = () => {
 		])
 	}, [currentYear])
 
-	// Handle custom year input
-	const handleCustomYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		// Allow only numbers
-		const value = e.target.value.replace(/\D/g, "")
-		setCustomYear(value)
-	}
-
 	// 处理自定义年份提交
 	const handleCustomYearSubmit = () => {
 		if (customYear) {
@@ -260,29 +255,28 @@ const ExpenseTracker: React.FC = () => {
 		}
 	}
 
-	// Month names
-	const months = [
-		"January",
-		"February",
-		"March",
-		"April",
-		"May",
-		"June",
-		"July",
-		"August",
-		"September",
-		"October",
-		"November",
-		"December",
-	]
-
 	// Format the displayed date string
 	const displayDate = useMemo(() => {
+		const months = [
+			"January",
+			"February",
+			"March",
+			"April",
+			"May",
+			"June",
+			"July",
+			"August",
+			"September",
+			"October",
+			"November",
+			"December",
+		]
+
 		if (selectedDate.month === null) {
 			return `${selectedDate.year}`
 		}
 		return `${months[selectedDate.month]} ${selectedDate.year}`
-	}, [selectedDate, months])
+	}, [selectedDate])
 
 	// 处理从URL初始化的日期选择
 	const handleDateSelect = useCallback((date: DateSelection) => {
@@ -291,51 +285,7 @@ const ExpenseTracker: React.FC = () => {
 
 	// 打开新交易Modal
 	const openTransactionModal = () => {
-		// 重置表单数据
-		setTransactionForm({
-			category: EXPENSE_CATEGORIES[0],
-			note: "",
-			amount: "",
-			date: new Date().toISOString().split("T")[0],
-			isExpense: true,
-		})
 		setShowTransactionModal(true)
-	}
-
-	// 关闭新交易Modal
-	const closeTransactionModal = () => {
-		setShowTransactionModal(false)
-	}
-
-	// 处理交易类型切换（支出/收入）
-	const handleTransactionTypeChange = (isExpense: boolean) => {
-		setTransactionForm((prev) => ({
-			...prev,
-			isExpense,
-			// 切换类型时同时更新类别为新类型的第一个选项
-			category: isExpense ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0],
-		}))
-	}
-
-	// 处理表单字段变化
-	const handleFormChange = (
-		e: React.ChangeEvent<
-			HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-		>
-	) => {
-		const { name, value } = e.target
-
-		// 特殊处理金额字段，只允许输入数字和小数点
-		if (name === "amount") {
-			// 只接受数字和最多一个小数点
-			const regex = /^(\d*\.?\d{0,2})?$/
-			if (value === "" || regex.test(value)) {
-				setTransactionForm((prev) => ({ ...prev, [name]: value }))
-			}
-			return
-		}
-
-		setTransactionForm((prev) => ({ ...prev, [name]: value }))
 	}
 
 	// 处理添加新交易
@@ -389,6 +339,7 @@ const ExpenseTracker: React.FC = () => {
 	// Filter transactions based on selected date
 	const filteredTransactions = useMemo(() => {
 		return transactions.filter((transaction) => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const [month, day, year] = transaction.date
 				.split(".")
 				.map((part) => parseInt(part))
@@ -455,6 +406,7 @@ const ExpenseTracker: React.FC = () => {
 				// If no id or temporary id, add to database
 				if (!transaction.id || transaction.id.startsWith("temp-")) {
 					// Remove id from transaction object, as addTransaction will auto-generate id
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					const { id, ...transactionWithoutId } = transaction
 					await addTransaction(transactionWithoutId)
 				}
@@ -507,6 +459,104 @@ const ExpenseTracker: React.FC = () => {
 		if (e.key === "Enter") {
 			handleInputSubmit()
 		}
+	}
+
+	// 处理编辑交易
+	const handleEditTransaction = async (form: TransactionForm) => {
+		if (!editingTransaction) return
+
+		// 验证输入
+		if (!form.category || !form.amount || !form.date) {
+			alert("Please fill in all required fields!")
+			return
+		}
+
+		const amount = parseFloat(form.amount)
+		if (isNaN(amount) || amount <= 0) {
+			alert("Please enter a valid amount greater than zero!")
+			return
+		}
+
+		try {
+			// 准备日期格式
+			const dateObj = new Date(form.date)
+			const month = dateObj.getMonth() + 1
+			const day = dateObj.getDate()
+			const year = dateObj.getFullYear()
+			const formattedDate = `${month}.${day}.${year}`
+
+			// 准备星期几
+			const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+			const dayName = days[dateObj.getDay()]
+
+			// 创建更新后的交易对象
+			const updatedTransaction: Transaction = {
+				...editingTransaction,
+				date: formattedDate,
+				day: dayName,
+				category: form.category,
+				note: form.note || "No note",
+				amount: form.isExpense ? -Math.abs(amount) : Math.abs(amount),
+			}
+
+			// 调用API更新交易
+			const result = await updateTransaction(updatedTransaction)
+
+			if (result) {
+				// 刷新交易列表
+				await refreshTransactions()
+				setEditingTransaction(null)
+			}
+		} catch (error) {
+			console.error("Failed to update transaction:", error)
+			alert("Failed to update transaction. Please try again.")
+		}
+	}
+
+	// 处理删除交易
+	const handleDeleteTransaction = async () => {
+		if (!deletingTransactionId) return
+
+		try {
+			const success = await deleteTransaction(deletingTransactionId)
+			if (success) {
+				// 刷新交易列表
+				await refreshTransactions()
+			} else {
+				alert("Failed to delete transaction. Please try again.")
+			}
+		} catch (error) {
+			console.error("Failed to delete transaction:", error)
+			alert("Failed to delete transaction. Please try again.")
+		} finally {
+			setDeletingTransactionId(null)
+		}
+	}
+
+	// 为编辑准备表单数据
+	const prepareFormDataFromTransaction = (
+		transaction: Transaction
+	): Partial<TransactionForm> => {
+		const isExpense = transaction.amount < 0
+		const dateParts = transaction.date.split(".")
+		const dateString = `${dateParts[2]}-${dateParts[0].padStart(
+			2,
+			"0"
+		)}-${dateParts[1].padStart(2, "0")}`
+
+		return {
+			category: transaction.category,
+			note: transaction.note,
+			amount: Math.abs(transaction.amount).toString(),
+			date: dateString,
+			isExpense: isExpense,
+		}
+	}
+
+	// 打开删除确认对话框
+	const confirmDelete = (transactionId: string) => {
+		setDeletingTransactionId(transactionId)
+		setShowDeleteModal(true)
 	}
 
 	return (
@@ -686,7 +736,10 @@ const ExpenseTracker: React.FC = () => {
 											</div>
 										</div>
 
-										<div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+										<div
+											className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+											onClick={() => setEditingTransaction(transaction)}
+										>
 											<div className="flex items-center">
 												<div
 													className={`h-8 w-8 ${
@@ -712,15 +765,39 @@ const ExpenseTracker: React.FC = () => {
 													</div>
 												</div>
 											</div>
-											<div
-												className={`font-medium ${
-													transaction.amount < 0
-														? "text-red-500"
-														: "text-green-500"
-												}`}
-											>
-												{transaction.amount < 0 ? "-" : "+"}$
-												{Math.abs(transaction.amount).toFixed(2)}
+											<div className="flex items-center">
+												<div
+													className={`font-medium ${
+														transaction.amount < 0
+															? "text-red-500"
+															: "text-green-500"
+													} mr-3`}
+												>
+													{transaction.amount < 0 ? "-" : "+"}$
+													{Math.abs(transaction.amount).toFixed(2)}
+												</div>
+												<button
+													className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+													onClick={(e) => {
+														e.stopPropagation() // 防止触发父元素的点击事件
+														confirmDelete(transaction.id)
+													}}
+												>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														className="h-5 w-5"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke="currentColor"
+													>
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth={2}
+															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+														/>
+													</svg>
+												</button>
 											</div>
 										</div>
 									</div>
@@ -807,6 +884,29 @@ const ExpenseTracker: React.FC = () => {
 				onSubmit={handleAddMultipleTransactions}
 				expenseCategories={EXPENSE_CATEGORIES}
 				incomeCategories={INCOME_CATEGORIES}
+			/>
+
+			{/* Edit Transaction Modal */}
+			{editingTransaction && (
+				<NewTransactionModal
+					isOpen={true}
+					onClose={() => setEditingTransaction(null)}
+					onSubmit={handleEditTransaction}
+					initialForm={prepareFormDataFromTransaction(editingTransaction)}
+					expenseCategories={EXPENSE_CATEGORIES}
+					incomeCategories={INCOME_CATEGORIES}
+				/>
+			)}
+
+			{/* Delete Confirmation Modal */}
+			<ConfirmationModal
+				isOpen={showDeleteModal}
+				onClose={() => setShowDeleteModal(false)}
+				onConfirm={handleDeleteTransaction}
+				title="Delete Transaction"
+				message="Are you sure you want to delete this transaction? This action cannot be undone."
+				confirmText="Delete"
+				cancelText="Cancel"
 			/>
 		</div>
 	)
