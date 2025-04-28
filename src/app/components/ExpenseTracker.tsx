@@ -18,6 +18,8 @@ import {
 import { useRouter, useSearchParams } from "next/navigation"
 import DateSelectionModal from "./DateSelectionModal"
 import NewTransactionModal from "./NewTransactionModal"
+import BatchTransactionModal from "./BatchTransactionModal"
+import { parseNaturalLanguage } from "@/app/services/naturalLanguageParser"
 
 interface DateSelection {
 	year: number
@@ -438,10 +440,72 @@ const ExpenseTracker: React.FC = () => {
 		}
 	}, [showDateModal])
 
-	// 处理按回车键添加交易
+	// 添加批量交易Modal的状态
+	const [showBatchModal, setShowBatchModal] = useState(false)
+	const [parsedTransactions, setParsedTransactions] = useState<Transaction[]>(
+		[]
+	)
+	const [isParsingInput, setIsParsingInput] = useState(false)
+
+	// Handle adding multiple transactions
+	const handleAddMultipleTransactions = async (transactions: Transaction[]) => {
+		try {
+			// Add each transaction sequentially
+			for (const transaction of transactions) {
+				// If no id or temporary id, add to database
+				if (!transaction.id || transaction.id.startsWith("temp-")) {
+					// Remove id from transaction object, as addTransaction will auto-generate id
+					const { id, ...transactionWithoutId } = transaction
+					await addTransaction(transactionWithoutId)
+				}
+			}
+
+			// Refresh transaction list
+			await refreshTransactions()
+			// Clear input
+			setInputMessage("")
+		} catch (error) {
+			console.error("Failed to add batch transactions:", error)
+			alert("Failed to add transactions. Please try again.")
+		}
+	}
+
+	// Handle input submission
+	const handleInputSubmit = async () => {
+		if (!inputMessage.trim()) {
+			// If input is empty, open regular transaction modal
+			openTransactionModal()
+			return
+		}
+
+		try {
+			setIsParsingInput(true)
+			// Call API to parse natural language input
+			const transactions = await parseNaturalLanguage(inputMessage.trim())
+
+			if (transactions.length === 0) {
+				// If no transactions recognized, show message
+				alert(
+					"No transactions could be identified from your input. Please try again or use the form to add manually."
+				)
+				return
+			}
+
+			// Set parsed transactions and open batch modal
+			setParsedTransactions(transactions)
+			setShowBatchModal(true)
+		} catch (error) {
+			console.error("Failed to parse input:", error)
+			alert("Failed to process your input. Please try again.")
+		} finally {
+			setIsParsingInput(false)
+		}
+	}
+
+	// 处理按回车键提交输入
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter") {
-			handleAddNewTransaction(transactionForm)
+			handleInputSubmit()
 		}
 	}
 
@@ -679,29 +743,34 @@ const ExpenseTracker: React.FC = () => {
 							type="text"
 							value={inputMessage}
 							onChange={(e) => setInputMessage(e.target.value)}
-							placeholder="Search transactions... (Coming soon)"
+							onKeyDown={handleKeyDown}
+							placeholder="Add transaction or enter natural language description..."
 							className="flex-grow px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
-							disabled
 						/>
 						{/* Add transaction button */}
 						<button
-							onClick={openTransactionModal}
+							onClick={handleInputSubmit}
 							className="ml-2 p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+							disabled={isParsingInput}
 						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								className="h-5 w-5"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M12 4v16m8-8H4"
-								/>
-							</svg>
+							{isParsingInput ? (
+								<div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+							) : (
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M12 4v16m8-8H4"
+									/>
+								</svg>
+							)}
 						</button>
 					</div>
 				</div>
@@ -726,6 +795,16 @@ const ExpenseTracker: React.FC = () => {
 				isOpen={showTransactionModal}
 				onClose={() => setShowTransactionModal(false)}
 				onSubmit={handleAddNewTransaction}
+				expenseCategories={EXPENSE_CATEGORIES}
+				incomeCategories={INCOME_CATEGORIES}
+			/>
+
+			{/* Batch Transaction Modal */}
+			<BatchTransactionModal
+				isOpen={showBatchModal}
+				onClose={() => setShowBatchModal(false)}
+				transactions={parsedTransactions}
+				onSubmit={handleAddMultipleTransactions}
 				expenseCategories={EXPENSE_CATEGORIES}
 				incomeCategories={INCOME_CATEGORIES}
 			/>
