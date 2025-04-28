@@ -1,16 +1,13 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import Image from "next/image"
-
-interface Transaction {
-	id: string
-	date: string
-	day: string
-	category: string
-	note: string
-	amount: number // positive for income, negative for expense
-}
+import {
+	Transaction,
+	getTransactions,
+	addTransaction,
+} from "@/app/services/transactionService"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface DateSelection {
 	year: number
@@ -18,16 +15,123 @@ interface DateSelection {
 }
 
 const ExpenseTracker: React.FC = () => {
+	const router = useRouter()
+	const searchParams = useSearchParams()
+
 	const [inputMessage, setInputMessage] = useState("")
 	const [showDateModal, setShowDateModal] = useState(false)
+	const [transactions, setTransactions] = useState<Transaction[]>([])
+	const [isLoading, setIsLoading] = useState(true)
+
+	// 当前年月
+	const currentYear = new Date().getFullYear()
+	const currentMonth = new Date().getMonth()
+
+	// 从URL获取初始年月或使用当前日期
+	// 根据不同情况处理参数：
+	// 1. 如果年和月都没有，使用当前年月
+	// 2. 如果只有年参数，使用该年，月为null (显示整年)
+	// 3. 如果只有月参数，使用当前年和参数月
+	const hasYearParam = searchParams.has("year")
+	const hasMonthParam = searchParams.has("month")
+
+	const initialYear = hasYearParam
+		? parseInt(searchParams.get("year") as string)
+		: currentYear
+
+	const initialMonth = hasMonthParam
+		? parseInt(searchParams.get("month") as string)
+		: hasYearParam
+		? null
+		: currentMonth // 如果只有年参数，月为null；否则为当前月
+
 	const [selectedDate, setSelectedDate] = useState<DateSelection>({
-		year: new Date().getFullYear(),
-		month: new Date().getMonth(), // Current month (0-based)
+		year: initialYear,
+		month: initialMonth,
 	})
+
 	const [customYear, setCustomYear] = useState<string>("")
 
-	// Current year
-	const currentYear = new Date().getFullYear()
+	// 更新URL查询参数
+	const updateUrlParams = useCallback(
+		(year: number, month: number | null) => {
+			// 创建新的URLSearchParams对象
+			const params = new URLSearchParams()
+
+			// 添加年份参数
+			params.set("year", year.toString())
+
+			// 如果有月份，添加月份参数；如果为null，则不添加月份参数
+			if (month !== null) {
+				params.set("month", month.toString())
+			}
+
+			// 更新URL，不触发页面刷新
+			router.replace(`?${params.toString()}`, { scroll: false })
+		},
+		[router]
+	)
+
+	// 当选择的日期改变时，更新URL
+	useEffect(() => {
+		updateUrlParams(selectedDate.year, selectedDate.month)
+	}, [selectedDate, updateUrlParams])
+
+	// 加载交易数据 - 只在组件挂载时执行一次
+	useEffect(() => {
+		let isMounted = true
+
+		const loadTransactions = async () => {
+			if (!isMounted) return
+
+			setIsLoading(true)
+			try {
+				// 获取交易数据（先从本地，同时在后台从API获取更新）
+				const data = await getTransactions()
+				if (isMounted) {
+					setTransactions(data)
+				}
+			} catch (error) {
+				console.error("Error loading transactions:", error)
+			} finally {
+				if (isMounted) {
+					setIsLoading(false)
+				}
+			}
+		}
+
+		loadTransactions()
+
+		// 可以添加一个周期性的刷新功能，但频率应当降低
+		const refreshInterval = setInterval(() => {
+			if (!isMounted) return
+
+			getTransactions().then((newData) => {
+				if (!isMounted) return
+
+				// 仅当数据有变化时才更新状态
+				if (JSON.stringify(newData) !== JSON.stringify(transactions)) {
+					setTransactions(newData)
+				}
+			})
+		}, 300000) // 从每分钟改为每5分钟检查一次更新
+
+		// 清理函数
+		return () => {
+			isMounted = false
+			clearInterval(refreshInterval)
+		}
+	}, []) // 空依赖数组确保只执行一次
+
+	// 刷新交易列表的函数 - 用于添加新交易后调用
+	const refreshTransactions = useCallback(async () => {
+		try {
+			const updatedTransactions = await getTransactions()
+			setTransactions(updatedTransactions)
+		} catch (error) {
+			console.error("Error refreshing transactions:", error)
+		}
+	}, [])
 
 	// Quick access years (8 years with current year in the middle)
 	const [quickYears, setQuickYears] = useState<number[]>([])
@@ -95,76 +199,56 @@ const ExpenseTracker: React.FC = () => {
 		return `${months[selectedDate.month]} ${selectedDate.year}`
 	}, [selectedDate, months])
 
-	const allTransactions: Transaction[] = [
-		{
-			id: "1",
-			date: "10.22.2024",
-			day: "Tue",
-			category: "Groceries",
-			note: "Weekly shopping",
-			amount: -50.0, // expense
-		},
-		{
-			id: "2",
-			date: "10.22.2024",
-			day: "Tue",
-			category: "Meals",
-			note: "Lunch with colleagues",
-			amount: -25.67, // expense
-		},
-		{
-			id: "3",
-			date: "10.16.2024",
-			day: "Wed",
-			category: "Groceries",
-			note: "Household items",
-			amount: -14.03, // expense
-		},
-		{
-			id: "4",
-			date: "10.15.2024",
-			day: "Tue",
-			category: "Meals",
-			note: "Dinner delivery",
-			amount: -540.0, // expense
-		},
-		{
-			id: "5",
-			date: "10.12.2024",
-			day: "Sat",
-			category: "Salary",
-			note: "Monthly salary",
-			amount: 3000.0, // income
-		},
-		{
-			id: "6",
-			date: "10.10.2024",
-			day: "Thu",
-			category: "Groceries",
-			note: "Fresh produce",
-			amount: -46.0, // expense
-		},
-		{
-			id: "7",
-			date: "09.25.2024",
-			day: "Wed",
-			category: "Utilities",
-			note: "Electricity bill",
-			amount: -120.45, // expense
-		},
-		{
-			id: "8",
-			date: "09.15.2024",
-			day: "Sun",
-			category: "Salary",
-			note: "Monthly salary",
-			amount: 3000.0, // income
-		},
-	]
+	// 处理添加新交易
+	const handleAddTransaction = async () => {
+		if (!inputMessage.trim()) return
+
+		// 这里可以添加更复杂的解析逻辑来从输入文本中提取交易信息
+		// 简单示例：假设格式为 "类别:备注:金额"，例如 "Groceries:Weekly shopping:-50"
+		const parts = inputMessage.split(":")
+
+		if (parts.length >= 3) {
+			const category = parts[0].trim()
+			const note = parts[1].trim()
+			const amountStr = parts[2].trim()
+			const amount = parseFloat(amountStr)
+
+			if (!isNaN(amount) && category && note) {
+				// 获取当前日期信息
+				const now = new Date()
+				const date = `${
+					now.getMonth() + 1
+				}.${now.getDate()}.${now.getFullYear()}`
+				const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+				const day = days[now.getDay()]
+
+				// 创建新交易对象
+				const newTransaction = {
+					date,
+					day,
+					category,
+					note,
+					amount,
+				}
+
+				try {
+					const result = await addTransaction(newTransaction)
+					if (result) {
+						// 添加成功后清空输入框
+						setInputMessage("")
+						// 刷新交易列表
+						await refreshTransactions()
+					}
+				} catch (error) {
+					console.error("Error adding transaction:", error)
+				}
+			}
+		}
+	}
 
 	// Filter transactions based on selected date
-	const transactions = useMemo(() => {
-		return allTransactions.filter((transaction) => {
+	const filteredTransactions = useMemo(() => {
+		return transactions.filter((transaction) => {
 			const [month, day, year] = transaction.date
 				.split(".")
 				.map((part) => parseInt(part))
@@ -177,14 +261,14 @@ const ExpenseTracker: React.FC = () => {
 			// If month is also selected, filter by both year and month
 			return year === selectedDate.year && month === selectedDate.month + 1
 		})
-	}, [allTransactions, selectedDate])
+	}, [transactions, selectedDate])
 
 	// Calculate monthly expenses, income and balance
 	const financialSummary = useMemo(() => {
 		let totalExpense = 0
 		let totalIncome = 0
 
-		transactions.forEach((transaction) => {
+		filteredTransactions.forEach((transaction) => {
 			if (transaction.amount < 0) {
 				totalExpense += Math.abs(transaction.amount)
 			} else {
@@ -199,7 +283,7 @@ const ExpenseTracker: React.FC = () => {
 			income: totalIncome,
 			balance: balance,
 		}
-	}, [transactions])
+	}, [filteredTransactions])
 
 	// Close modal when clicking outside
 	useEffect(() => {
@@ -215,6 +299,13 @@ const ExpenseTracker: React.FC = () => {
 			document.removeEventListener("mousedown", handleClickOutside)
 		}
 	}, [showDateModal])
+
+	// 处理按回车键添加交易
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "Enter") {
+			handleAddTransaction()
+		}
+	}
 
 	return (
 		<div className="flex flex-col h-full relative">
@@ -366,8 +457,12 @@ const ExpenseTracker: React.FC = () => {
 
 						{/* Transactions list */}
 						<div className="space-y-6 pb-24">
-							{transactions.length > 0 ? (
-								transactions.map((transaction) => (
+							{isLoading ? (
+								<div className="flex justify-center py-10">
+									<div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+								</div>
+							) : filteredTransactions.length > 0 ? (
+								filteredTransactions.map((transaction) => (
 									<div key={transaction.id} className="transition-all">
 										<div className="flex justify-between items-center mb-2">
 											<div className="text-md font-medium text-gray-700">
@@ -436,11 +531,15 @@ const ExpenseTracker: React.FC = () => {
 							type="text"
 							value={inputMessage}
 							onChange={(e) => setInputMessage(e.target.value)}
-							placeholder="Enter a new transaction..."
+							onKeyDown={handleKeyDown}
+							placeholder="Format: Category:Note:Amount"
 							className="flex-grow px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
 						/>
 						{/* Add transaction button */}
-						<button className="ml-2 p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors">
+						<button
+							onClick={handleAddTransaction}
+							className="ml-2 p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								className="h-5 w-5"
