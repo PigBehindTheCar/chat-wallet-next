@@ -81,6 +81,23 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 		onClose()
 	}
 
+	// 处理点击Modal外部关闭
+	React.useEffect(() => {
+		if (!isOpen) return
+
+		const handleClickOutside = (event: MouseEvent) => {
+			const modal = document.getElementById("transaction-modal")
+			if (modal && !modal.contains(event.target as Node)) {
+				onClose()
+			}
+		}
+
+		document.addEventListener("mousedown", handleClickOutside)
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside)
+		}
+	}, [isOpen, onClose])
+
 	if (!isOpen) return null
 
 	return (
