@@ -62,25 +62,26 @@ const ExpenseTracker: React.FC = () => {
 	]
 
 	return (
-		<div className="flex flex-col h-full overflow-y-auto">
+		<div className="flex flex-col h-full relative">
 			{/* Header with background image */}
-			<div className="relative h-48 overflow-hidden">
-				<div className="absolute inset-0">
+			<div className="relative h-52 overflow-hidden rounded-t-xl">
+				<div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600">
 					<Image
 						src="/cappadocia.jpg"
 						alt="Background"
 						layout="fill"
 						objectFit="cover"
+						className="opacity-40 mix-blend-overlay"
 						priority
 					/>
 				</div>
 
 				{/* Top navigation */}
 				<div className="relative flex justify-between items-center p-4">
-					<button className="text-white">
+					<button className="text-white hover:bg-white/10 p-2 rounded-full transition">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
-							className="h-6 w-6"
+							className="h-5 w-5"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -96,11 +97,11 @@ const ExpenseTracker: React.FC = () => {
 
 					<div className="text-white text-xl font-semibold">2024-10</div>
 
-					<div className="flex space-x-4">
-						<button className="text-white">
+					<div className="flex space-x-2">
+						<button className="text-white hover:bg-white/10 p-2 rounded-full transition">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								className="h-6 w-6"
+								className="h-5 w-5"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -113,10 +114,10 @@ const ExpenseTracker: React.FC = () => {
 								/>
 							</svg>
 						</button>
-						<button className="text-white">
+						<button className="text-white hover:bg-white/10 p-2 rounded-full transition">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								className="h-6 w-6"
+								className="h-5 w-5"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -133,26 +134,32 @@ const ExpenseTracker: React.FC = () => {
 				</div>
 
 				{/* Financial summary */}
-				<div className="relative px-6 pt-10">
-					<div className="text-white text-lg">月支出</div>
-					<div className="text-white text-5xl font-bold mt-1">$1,278.40</div>
+				<div className="relative px-6 pb-4">
+					<div className="text-white/80 text-sm font-medium">月支出</div>
+					<div className="text-white text-4xl font-bold mt-1">$1,278.40</div>
 
-					<div className="flex justify-between mt-4 text-white">
-						<div>月收入 $0.00</div>
-						<div>本月结余 -$1,278.40</div>
+					<div className="flex justify-between mt-3 text-white/80 text-sm">
+						<div className="flex flex-col">
+							<span>月收入</span>
+							<span className="font-semibold text-white">$0.00</span>
+						</div>
+						<div className="flex flex-col">
+							<span>本月结余</span>
+							<span className="font-semibold text-white">-$1,278.40</span>
+						</div>
 					</div>
 				</div>
 			</div>
 
 			{/* Budget section */}
-			<div className="bg-white rounded-t-3xl -mt-5 flex-grow">
-				<div className="p-6">
+			<div className="bg-white rounded-b-xl flex-grow overflow-y-auto">
+				<div className="pt-4 px-6">
 					<div className="flex justify-between items-center mb-4">
-						<div className="text-lg font-bold">预算</div>
-						<button>
+						<div className="text-lg font-bold text-gray-800">预算</div>
+						<button className="p-1.5 hover:bg-gray-100 rounded-full transition">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								className="h-6 w-6 text-gray-400"
+								className="h-5 w-5 text-gray-500"
 								fill="none"
 								viewBox="0 0 24 24"
 								stroke="currentColor"
@@ -167,66 +174,70 @@ const ExpenseTracker: React.FC = () => {
 						</button>
 					</div>
 
-					<div className="h-2 bg-gray-100 rounded-full mb-4">
-						<div className="h-2 bg-green-200 rounded-full w-1/5"></div>
+					<div className="h-2 bg-gray-100 rounded-full mb-3">
+						<div className="h-2 bg-green-400 rounded-full w-1/5"></div>
 					</div>
 
-					<div className="flex justify-between text-gray-500 mb-6">
+					<div className="flex justify-between text-gray-500 text-sm mb-8">
 						<div>剩余: --</div>
 						<div>总额: 未设置</div>
 					</div>
 
 					{/* Transactions list */}
-					{transactions.map((transaction, idx) => (
-						<React.Fragment key={transaction.id}>
-							<div className="flex justify-between items-center py-3">
-								<div className="text-lg font-medium">
-									{transaction.date} {transaction.day}
-								</div>
-								<div className="text-lg font-medium">
-									支:${transaction.amount.toFixed(2)}
-								</div>
-							</div>
-
-							<div className="flex items-center justify-between py-2">
-								<div className="flex items-center">
-									<div className="h-2 w-2 bg-red-500 rounded-full mr-4"></div>
-									<div>
-										<div className="font-medium">{transaction.category}</div>
-										<div className="text-gray-500">{transaction.merchant}</div>
+					<div className="space-y-6 pb-6">
+						{transactions.map((transaction, idx) => (
+							<div key={transaction.id} className="transition-all">
+								<div className="flex justify-between items-center mb-2">
+									<div className="text-md font-medium text-gray-700">
+										{transaction.date} {transaction.day}
+									</div>
+									<div className="text-md font-medium text-gray-700">
+										支:${transaction.amount.toFixed(2)}
 									</div>
 								</div>
-								<div className="text-red-500 text-lg">
-									-${transaction.amount.toFixed(2)}
+
+								<div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+									<div className="flex items-center">
+										<div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
+											<div className="h-2 w-2 bg-red-500 rounded-full"></div>
+										</div>
+										<div>
+											<div className="font-medium text-gray-800">
+												{transaction.category}
+											</div>
+											<div className="text-gray-500 text-sm">
+												{transaction.merchant}
+											</div>
+										</div>
+									</div>
+									<div className="text-red-500 font-medium">
+										-${transaction.amount.toFixed(2)}
+									</div>
 								</div>
 							</div>
-
-							{idx < transactions.length - 1 && (
-								<div className="border-b border-gray-100 my-2"></div>
-							)}
-						</React.Fragment>
-					))}
+						))}
+					</div>
 				</div>
+			</div>
 
-				{/* Add button */}
-				<div className="fixed bottom-1/2 right-6 transform translate-y-6">
-					<button className="bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							className="h-6 w-6"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M12 4v16m8-8H4"
-							/>
-						</svg>
-					</button>
-				</div>
+			{/* Add button */}
+			<div className="absolute bottom-6 right-6">
+				<button className="bg-indigo-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-colors">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						className="h-6 w-6"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M12 4v16m8-8H4"
+						/>
+					</svg>
+				</button>
 			</div>
 		</div>
 	)
