@@ -1,6 +1,12 @@
 "use client"
 
-import React, { useState, useMemo, useEffect, useCallback } from "react"
+import React, {
+	useState,
+	useMemo,
+	useEffect,
+	useCallback,
+	Suspense,
+} from "react"
 import Image from "next/image"
 import {
 	Transaction,
@@ -14,20 +20,16 @@ interface DateSelection {
 	month: number | null
 }
 
-const ExpenseTracker: React.FC = () => {
-	const router = useRouter()
+// 创建一个DateSelector组件来处理日期选择和URL参数
+function DateSelector({
+	onDateSelect,
+}: {
+	onDateSelect: (date: DateSelection) => void
+}) {
 	const searchParams = useSearchParams()
-
-	const [inputMessage, setInputMessage] = useState("")
-	const [showDateModal, setShowDateModal] = useState(false)
-	const [transactions, setTransactions] = useState<Transaction[]>([])
-	const [isLoading, setIsLoading] = useState(true)
-
-	// 当前年月
 	const currentYear = new Date().getFullYear()
 	const currentMonth = new Date().getMonth()
 
-	// 从URL获取初始年月或使用当前日期
 	// 根据不同情况处理参数：
 	// 1. 如果年和月都没有，使用当前年月
 	// 2. 如果只有年参数，使用该年，月为null (显示整年)
@@ -45,9 +47,33 @@ const ExpenseTracker: React.FC = () => {
 		? null
 		: currentMonth // 如果只有年参数，月为null；否则为当前月
 
+	// 初始化时设置日期
+	useEffect(() => {
+		onDateSelect({
+			year: initialYear,
+			month: initialMonth,
+		})
+	}, [initialYear, initialMonth, onDateSelect])
+
+	return null // 这个组件不渲染任何UI，只处理URL参数
+}
+
+const ExpenseTracker: React.FC = () => {
+	const router = useRouter()
+
+	const [inputMessage, setInputMessage] = useState("")
+	const [showDateModal, setShowDateModal] = useState(false)
+	const [transactions, setTransactions] = useState<Transaction[]>([])
+	const [isLoading, setIsLoading] = useState(true)
+
+	// 当前年月
+	const currentYear = new Date().getFullYear()
+	const currentMonth = new Date().getMonth()
+
+	// 默认使用当前日期，稍后由DateSelector根据URL参数更新
 	const [selectedDate, setSelectedDate] = useState<DateSelection>({
-		year: initialYear,
-		month: initialMonth,
+		year: currentYear,
+		month: currentMonth,
 	})
 
 	const [customYear, setCustomYear] = useState<string>("")
@@ -307,8 +333,18 @@ const ExpenseTracker: React.FC = () => {
 		}
 	}
 
+	// 处理从URL初始化的日期选择
+	const handleDateSelect = useCallback((date: DateSelection) => {
+		setSelectedDate(date)
+	}, [])
+
 	return (
 		<div className="flex flex-col h-full relative">
+			{/* 使用Suspense包装useSearchParams钩子 */}
+			<Suspense fallback={null}>
+				<DateSelector onDateSelect={handleDateSelect} />
+			</Suspense>
+
 			{/* Header with background image - fixed height */}
 			<div className="relative min-h-[210px] max-h-[210px] overflow-hidden rounded-t-xl">
 				<div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600">
