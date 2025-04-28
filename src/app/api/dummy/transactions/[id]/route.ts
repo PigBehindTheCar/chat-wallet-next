@@ -1,15 +1,5 @@
 import { NextResponse } from "next/server"
-import { transactions } from "../route"
-
-// 交易数据模型
-interface Transaction {
-	id: string
-	date: string
-	day: string
-	category: string
-	note: string
-	amount: number // 正数表示收入，负数表示支出
-}
+import { transactions, Transaction } from "../data"
 
 // 处理删除交易请求
 export async function DELETE(
