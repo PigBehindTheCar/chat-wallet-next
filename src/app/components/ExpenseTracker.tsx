@@ -688,6 +688,7 @@ const ExpenseTracker: React.FC = () => {
 				{/* Budget section */}
 				<div className="bg-white rounded-b-xl flex-grow overflow-y-auto">
 					<div className="pt-4 px-6">
+						{/* 暂时注释掉Budget部分
 						<div className="flex justify-between items-center mb-4">
 							<div className="text-lg font-bold text-gray-800">Budget</div>
 							<button className="p-1.5 hover:bg-gray-100 rounded-full transition">
@@ -716,6 +717,7 @@ const ExpenseTracker: React.FC = () => {
 							<div>Remaining: --</div>
 							<div>Total: Not Set</div>
 						</div>
+						*/}
 
 						{/* Transactions list */}
 						<div className="space-y-6 pb-24">
@@ -895,6 +897,7 @@ const ExpenseTracker: React.FC = () => {
 					initialForm={prepareFormDataFromTransaction(editingTransaction)}
 					expenseCategories={EXPENSE_CATEGORIES}
 					incomeCategories={INCOME_CATEGORIES}
+					isEditing={true}
 				/>
 			)}
 

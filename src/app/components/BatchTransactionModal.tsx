@@ -285,6 +285,7 @@ const BatchTransactionModal: React.FC<BatchTransactionModalProps> = ({
 						initialForm={prepareFormData(transactions[editingIndex])}
 						expenseCategories={expenseCategories}
 						incomeCategories={incomeCategories}
+						isEditing={true}
 					/>
 				)}
 			</div>

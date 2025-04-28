@@ -15,6 +15,7 @@ interface NewTransactionModalProps {
 	initialForm?: Partial<TransactionForm>
 	expenseCategories: string[]
 	incomeCategories: string[]
+	isEditing?: boolean
 }
 
 const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
@@ -24,6 +25,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 	initialForm,
 	expenseCategories,
 	incomeCategories,
+	isEditing = false,
 }) => {
 	const [form, setForm] = React.useState<TransactionForm>({
 		category: expenseCategories[0],
@@ -107,7 +109,9 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 				className="bg-white rounded-xl shadow-xl p-5 w-80 max-w-[90%] max-h-[90%] overflow-y-auto"
 			>
 				<div className="flex justify-between items-center mb-5">
-					<h3 className="text-lg font-bold text-gray-800">Add Transaction</h3>
+					<h3 className="text-lg font-bold text-gray-800">
+						{isEditing ? "Edit Transaction" : "Add Transaction"}
+					</h3>
 					<button
 						className="text-gray-500 hover:text-gray-700"
 						onClick={onClose}
@@ -268,7 +272,9 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 								: "bg-green-500 hover:bg-green-600"
 						}`}
 					>
-						Add {form.isExpense ? "Expense" : "Income"}
+						{isEditing
+							? "Save Changes"
+							: `Add ${form.isExpense ? "Expense" : "Income"}`}
 					</button>
 				</div>
 			</div>
