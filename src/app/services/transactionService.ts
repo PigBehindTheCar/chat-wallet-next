@@ -26,6 +26,34 @@ interface SingleTransactionResponse {
 const LOCAL_STORAGE_KEY = "wallet_transactions"
 const LAST_SYNC_KEY = "wallet_transactions_last_sync"
 
+// 数据更新监听器类型
+type TransactionUpdateListener = (transactions: Transaction[]) => void
+
+// 存储所有注册的监听器
+const updateListeners: TransactionUpdateListener[] = []
+
+// 添加数据更新监听器
+export const addTransactionUpdateListener = (
+	listener: TransactionUpdateListener
+): void => {
+	updateListeners.push(listener)
+}
+
+// 移除数据更新监听器
+export const removeTransactionUpdateListener = (
+	listener: TransactionUpdateListener
+): void => {
+	const index = updateListeners.indexOf(listener)
+	if (index !== -1) {
+		updateListeners.splice(index, 1)
+	}
+}
+
+// 通知所有监听器数据已更新
+const notifyUpdateListeners = (transactions: Transaction[]): void => {
+	updateListeners.forEach((listener) => listener(transactions))
+}
+
 // 辅助函数：检查是否在浏览器环境
 const isBrowser = () => typeof window !== "undefined"
 
@@ -82,7 +110,7 @@ const fetchTransactionsFromAPI = async (): Promise<Transaction[]> => {
  * 获取交易数据（本地优先策略）
  * 1. 首先从本地存储加载
  * 2. 同时在后台从API获取最新数据
- * 3. 如果API返回的数据与本地不同，则更新本地存储并返回
+ * 3. 如果API返回的数据与本地不同，则更新本地存储并通知组件更新
  */
 export const getTransactions = async (): Promise<Transaction[]> => {
 	// 首先从本地获取数据
@@ -92,24 +120,20 @@ export const getTransactions = async (): Promise<Transaction[]> => {
 	const hasLocalData = localTransactions.length > 0
 
 	// 无论是否有本地数据，都异步请求API获取最新数据
-	const apiPromise = fetchTransactionsFromAPI().then((apiTransactions) => {
+	fetchTransactionsFromAPI().then((apiTransactions) => {
 		// 检查API数据是否与本地数据不同
 		if (JSON.stringify(apiTransactions) !== JSON.stringify(localTransactions)) {
 			// 如果数据不同，更新本地存储
 			saveLocalTransactions(apiTransactions)
-			localTransactions = apiTransactions
 
-			// 这里可以添加发布事件或回调通知UI组件数据已更新
-			// 例如: eventEmitter.emit('transactions-updated', apiTransactions);
-
-			return apiTransactions
+			// 通知所有监听器数据已更新
+			notifyUpdateListeners(apiTransactions)
 		}
-		return localTransactions
 	})
 
 	// 如果本地没有数据，等待API响应
 	if (!hasLocalData) {
-		return await apiPromise
+		return await fetchTransactionsFromAPI()
 	}
 
 	// 否则立即返回本地数据，让API在后台更新
@@ -140,6 +164,9 @@ export const addTransaction = async (
 			const localTransactions = getLocalTransactions()
 			localTransactions.push(newTransaction)
 			saveLocalTransactions(localTransactions)
+
+			// 通知所有监听器数据已更新
+			notifyUpdateListeners(localTransactions)
 
 			return newTransaction
 		}

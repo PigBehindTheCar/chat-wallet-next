@@ -12,6 +12,8 @@ import {
 	Transaction,
 	getTransactions,
 	addTransaction,
+	addTransactionUpdateListener,
+	removeTransactionUpdateListener,
 } from "@/app/services/transactionService"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -78,6 +80,15 @@ const ExpenseTracker: React.FC = () => {
 
 	const [customYear, setCustomYear] = useState<string>("")
 
+	// 处理交易数据更新的回调
+	const handleTransactionsUpdate = useCallback(
+		(updatedTransactions: Transaction[]) => {
+			console.log("云端数据已更新，重新渲染UI")
+			setTransactions(updatedTransactions)
+		},
+		[]
+	)
+
 	// 更新URL查询参数
 	const updateUrlParams = useCallback(
 		(year: number, month: number | null) => {
@@ -126,26 +137,26 @@ const ExpenseTracker: React.FC = () => {
 			}
 		}
 
+		// 注册数据更新监听器
+		addTransactionUpdateListener(handleTransactionsUpdate)
+
 		loadTransactions()
 
 		// 可以添加一个周期性的刷新功能，但频率应当降低
 		const refreshInterval = setInterval(() => {
 			if (!isMounted) return
 
-			getTransactions().then((newData) => {
-				if (!isMounted) return
-
-				// 仅当数据有变化时才更新状态
-				if (JSON.stringify(newData) !== JSON.stringify(transactions)) {
-					setTransactions(newData)
-				}
-			})
-		}, 300000) // 从每分钟改为每5分钟检查一次更新
+			// 调用getTransactions会触发后台更新检查
+			// 如果有更新，监听器会自动更新UI
+			getTransactions()
+		}, 300000) // 每5分钟检查一次更新
 
 		// 清理函数
 		return () => {
 			isMounted = false
 			clearInterval(refreshInterval)
+			// 移除监听器以防内存泄漏
+			removeTransactionUpdateListener(handleTransactionsUpdate)
 		}
 	}, []) // 空依赖数组确保只执行一次
 
