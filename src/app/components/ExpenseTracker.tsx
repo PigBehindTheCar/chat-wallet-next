@@ -16,11 +16,46 @@ import {
 	removeTransactionUpdateListener,
 } from "@/app/services/transactionService"
 import { useRouter, useSearchParams } from "next/navigation"
+import DateSelectionModal from "./DateSelectionModal"
+import NewTransactionModal from "./NewTransactionModal"
 
 interface DateSelection {
 	year: number
 	month: number | null
 }
+
+// 新交易的表单数据类型
+interface TransactionForm {
+	category: string
+	note: string
+	amount: string
+	date: string
+	isExpense: boolean
+}
+
+// 预设的交易类别
+const EXPENSE_CATEGORIES = [
+	"Food",
+	"Groceries",
+	"Transportation",
+	"Housing",
+	"Entertainment",
+	"Shopping",
+	"Utilities",
+	"Health",
+	"Education",
+	"Travel",
+	"Other",
+]
+
+const INCOME_CATEGORIES = [
+	"Salary",
+	"Bonus",
+	"Gift",
+	"Investment",
+	"Refund",
+	"Other",
+]
 
 // 创建一个DateSelector组件来处理日期选择和URL参数
 function DateSelector({
@@ -67,6 +102,18 @@ const ExpenseTracker: React.FC = () => {
 	const [showDateModal, setShowDateModal] = useState(false)
 	const [transactions, setTransactions] = useState<Transaction[]>([])
 	const [isLoading, setIsLoading] = useState(true)
+
+	// 新交易Modal状态
+	const [showTransactionModal, setShowTransactionModal] = useState(false)
+
+	// 新交易表单数据
+	const [transactionForm, setTransactionForm] = useState<TransactionForm>({
+		category: EXPENSE_CATEGORIES[0],
+		note: "",
+		amount: "",
+		date: new Date().toISOString().split("T")[0], // 今天的日期，格式：YYYY-MM-DD
+		isExpense: true, // 默认为支出
+	})
 
 	// 当前年月
 	const currentYear = new Date().getFullYear()
@@ -194,21 +241,20 @@ const ExpenseTracker: React.FC = () => {
 		setCustomYear(value)
 	}
 
+	// 处理自定义年份提交
 	const handleCustomYearSubmit = () => {
 		if (customYear) {
 			const year = parseInt(customYear)
-			// Validate year is within a reasonable range (e.g., 1900-2100)
-			if (year >= 1900 && year <= 2100) {
-				// Replace the first quick year with the custom year
-				const updatedQuickYears = [...quickYears]
-				updatedQuickYears.unshift(year)
-				updatedQuickYears.pop() // Remove the last year
-				setQuickYears(updatedQuickYears)
 
-				// Set the selected date to the custom year
-				setSelectedDate((prev) => ({ ...prev, year }))
-				setCustomYear("")
-			}
+			// 更新quickYears数组，将自定义年份添加到开头
+			const updatedQuickYears = [...quickYears]
+			updatedQuickYears.unshift(year)
+			updatedQuickYears.pop() // 移除最后一个年份
+			setQuickYears(updatedQuickYears)
+
+			// 更新选中的年份
+			setSelectedDate((prev) => ({ ...prev, year }))
+			setCustomYear("")
 		}
 	}
 
@@ -236,50 +282,105 @@ const ExpenseTracker: React.FC = () => {
 		return `${months[selectedDate.month]} ${selectedDate.year}`
 	}, [selectedDate, months])
 
-	// 处理添加新交易
-	const handleAddTransaction = async () => {
-		if (!inputMessage.trim()) return
+	// 处理从URL初始化的日期选择
+	const handleDateSelect = useCallback((date: DateSelection) => {
+		setSelectedDate(date)
+	}, [])
 
-		// 这里可以添加更复杂的解析逻辑来从输入文本中提取交易信息
-		// 简单示例：假设格式为 "类别:备注:金额"，例如 "Groceries:Weekly shopping:-50"
-		const parts = inputMessage.split(":")
+	// 打开新交易Modal
+	const openTransactionModal = () => {
+		// 重置表单数据
+		setTransactionForm({
+			category: EXPENSE_CATEGORIES[0],
+			note: "",
+			amount: "",
+			date: new Date().toISOString().split("T")[0],
+			isExpense: true,
+		})
+		setShowTransactionModal(true)
+	}
 
-		if (parts.length >= 3) {
-			const category = parts[0].trim()
-			const note = parts[1].trim()
-			const amountStr = parts[2].trim()
-			const amount = parseFloat(amountStr)
+	// 关闭新交易Modal
+	const closeTransactionModal = () => {
+		setShowTransactionModal(false)
+	}
 
-			if (!isNaN(amount) && category && note) {
-				// 获取当前日期信息
-				const now = new Date()
-				const date = `${
-					now.getMonth() + 1
-				}.${now.getDate()}.${now.getFullYear()}`
-				const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-				const day = days[now.getDay()]
+	// 处理交易类型切换（支出/收入）
+	const handleTransactionTypeChange = (isExpense: boolean) => {
+		setTransactionForm((prev) => ({
+			...prev,
+			isExpense,
+			// 切换类型时同时更新类别为新类型的第一个选项
+			category: isExpense ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0],
+		}))
+	}
 
-				// 创建新交易对象
-				const newTransaction = {
-					date,
-					day,
-					category,
-					note,
-					amount,
-				}
+	// 处理表单字段变化
+	const handleFormChange = (
+		e: React.ChangeEvent<
+			HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+		>
+	) => {
+		const { name, value } = e.target
 
-				try {
-					const result = await addTransaction(newTransaction)
-					if (result) {
-						// 添加成功后清空输入框
-						setInputMessage("")
-						// 刷新交易列表
-						await refreshTransactions()
-					}
-				} catch (error) {
-					console.error("Error adding transaction:", error)
-				}
+		// 特殊处理金额字段，只允许输入数字和小数点
+		if (name === "amount") {
+			// 只接受数字和最多一个小数点
+			const regex = /^(\d*\.?\d{0,2})?$/
+			if (value === "" || regex.test(value)) {
+				setTransactionForm((prev) => ({ ...prev, [name]: value }))
 			}
+			return
+		}
+
+		setTransactionForm((prev) => ({ ...prev, [name]: value }))
+	}
+
+	// 处理添加新交易
+	const handleAddNewTransaction = async (form: TransactionForm) => {
+		// 验证输入
+		if (!form.category || !form.amount || !form.date) {
+			alert("Please fill in all required fields!")
+			return
+		}
+
+		const amount = parseFloat(form.amount)
+		if (isNaN(amount) || amount <= 0) {
+			alert("Please enter a valid amount greater than zero!")
+			return
+		}
+
+		try {
+			// 准备日期格式
+			const dateObj = new Date(form.date)
+			const month = dateObj.getMonth() + 1
+			const day = dateObj.getDate()
+			const year = dateObj.getFullYear()
+			const formattedDate = `${month}.${day}.${year}`
+
+			// 准备星期几
+			const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+			const dayName = days[dateObj.getDay()]
+
+			// 创建交易对象，根据isExpense决定金额的正负
+			const newTransaction = {
+				date: formattedDate,
+				day: dayName,
+				category: form.category,
+				note: form.note || "No note",
+				amount: form.isExpense ? -amount : amount, // 支出为负，收入为正
+			}
+
+			// 调用API添加交易
+			const result = await addTransaction(newTransaction)
+
+			if (result) {
+				// 刷新交易列表
+				await refreshTransactions()
+			}
+		} catch (error) {
+			console.error("Failed to add transaction:", error)
+			alert("Failed to add transaction. Please try again.")
 		}
 	}
 
@@ -340,14 +441,9 @@ const ExpenseTracker: React.FC = () => {
 	// 处理按回车键添加交易
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter") {
-			handleAddTransaction()
+			handleAddNewTransaction(transactionForm)
 		}
 	}
-
-	// 处理从URL初始化的日期选择
-	const handleDateSelect = useCallback((date: DateSelection) => {
-		setSelectedDate(date)
-	}, [])
 
 	return (
 		<div className="flex flex-col h-full relative">
@@ -371,33 +467,38 @@ const ExpenseTracker: React.FC = () => {
 
 				{/* Top navigation */}
 				<div className="relative flex justify-between items-center p-4">
-					{/* Menu button (hamburger icon) */}
-					<button className="text-white hover:bg-white/10 p-2 rounded-full transition">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							className="h-5 w-5"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
+					{/* Left side - Menu button */}
+					<div className="w-10">
+						<button className="text-white hover:bg-white/10 p-2 rounded-full transition">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								className="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth={2}
+									d="M4 6h16M4 12h16M4 18h16"
+								/>
+							</svg>
+						</button>
+					</div>
+
+					{/* Center - Date selector */}
+					<div className="absolute left-1/2 transform -translate-x-1/2">
+						<button
+							onClick={() => setShowDateModal(true)}
+							className="text-white text-xl font-semibold hover:bg-white/10 px-4 py-1 rounded-full transition"
 						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M4 6h16M4 12h16M4 18h16"
-							/>
-						</svg>
-					</button>
+							{displayDate}
+						</button>
+					</div>
 
-					{/* Date selector (clickable) */}
-					<button
-						onClick={() => setShowDateModal(true)}
-						className="text-white text-xl font-semibold hover:bg-white/10 px-4 py-1 rounded-full transition"
-					>
-						{displayDate}
-					</button>
-
-					<div className="flex space-x-2">
+					{/* Right side - Icons */}
+					<div className="flex space-x-2 w-10 justify-end">
 						{/* Calendar button */}
 						<button className="text-white hover:bg-white/10 p-2 rounded-full transition">
 							<svg
@@ -578,13 +679,13 @@ const ExpenseTracker: React.FC = () => {
 							type="text"
 							value={inputMessage}
 							onChange={(e) => setInputMessage(e.target.value)}
-							onKeyDown={handleKeyDown}
-							placeholder="Format: Category:Note:Amount"
+							placeholder="Search transactions... (Coming soon)"
 							className="flex-grow px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
+							disabled
 						/>
 						{/* Add transaction button */}
 						<button
-							onClick={handleAddTransaction}
+							onClick={openTransactionModal}
 							className="ml-2 p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
 						>
 							<svg
@@ -607,125 +708,27 @@ const ExpenseTracker: React.FC = () => {
 			</div>
 
 			{/* Date Selection Modal */}
-			{showDateModal && (
-				<div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/50 z-30">
-					<div
-						id="date-modal"
-						className="bg-white rounded-xl shadow-xl p-5 w-80 max-w-[90%] max-h-[90%] overflow-y-auto"
-					>
-						<div className="flex justify-between items-center mb-5">
-							<h3 className="text-lg font-bold text-gray-800">Select Period</h3>
-							<button
-								className="text-gray-500 hover:text-gray-700"
-								onClick={() => setShowDateModal(false)}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M6 18L18 6M6 6l12 12"
-									/>
-								</svg>
-							</button>
-						</div>
+			<DateSelectionModal
+				isOpen={showDateModal}
+				onClose={() => setShowDateModal(false)}
+				selectedDate={selectedDate}
+				onDateChange={setSelectedDate}
+				quickYears={quickYears}
+				customYear={customYear}
+				onCustomYearChange={(value) => {
+					setCustomYear(value.replace(/\D/g, ""))
+				}}
+				onCustomYearSubmit={handleCustomYearSubmit}
+			/>
 
-						{/* Custom Year Input */}
-						<div className="mb-5">
-							<h4 className="text-sm font-medium text-gray-600 mb-2">
-								Custom Year
-							</h4>
-							<div className="flex">
-								<input
-									type="text"
-									value={customYear}
-									onChange={handleCustomYearChange}
-									placeholder="Enter year..."
-									className="flex-grow px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-									maxLength={4}
-								/>
-								<button
-									onClick={handleCustomYearSubmit}
-									className="px-3 py-2 bg-indigo-600 text-white rounded-r-lg hover:bg-indigo-700"
-								>
-									Set
-								</button>
-							</div>
-						</div>
-
-						{/* Quick Year Selection */}
-						<div className="mb-5">
-							<h4 className="text-sm font-medium text-gray-600 mb-2">
-								Quick Select
-							</h4>
-							<div className="grid grid-cols-4 gap-2">
-								{quickYears.map((year, index) => (
-									<button
-										key={`quick-${year}-${index}`}
-										className={`py-2 rounded-lg text-sm font-medium ${
-											selectedDate.year === year
-												? "bg-indigo-600 text-white"
-												: "bg-gray-100 text-gray-800 hover:bg-gray-200"
-										}`}
-										onClick={() =>
-											setSelectedDate((prev) => ({ ...prev, year }))
-										}
-									>
-										{year}
-									</button>
-								))}
-							</div>
-						</div>
-
-						{/* Month Selection */}
-						<div>
-							<div className="flex justify-between items-center mb-2">
-								<h4 className="text-sm font-medium text-gray-600">Month</h4>
-								<button
-									className="text-xs text-indigo-600 font-medium hover:text-indigo-800"
-									onClick={() =>
-										setSelectedDate((prev) => ({ ...prev, month: null }))
-									}
-								>
-									Show All Year
-								</button>
-							</div>
-							<div className="grid grid-cols-3 gap-2">
-								{months.map((month, index) => (
-									<button
-										key={month}
-										className={`py-2 px-1 rounded-lg text-sm ${
-											selectedDate.month === index
-												? "bg-indigo-600 text-white"
-												: "bg-gray-100 text-gray-800 hover:bg-gray-200"
-										}`}
-										onClick={() =>
-											setSelectedDate((prev) => ({ ...prev, month: index }))
-										}
-									>
-										{month.substring(0, 3)}
-									</button>
-								))}
-							</div>
-						</div>
-
-						<div className="mt-6 flex justify-end">
-							<button
-								className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-								onClick={() => setShowDateModal(false)}
-							>
-								Apply
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
+			{/* New Transaction Modal */}
+			<NewTransactionModal
+				isOpen={showTransactionModal}
+				onClose={() => setShowTransactionModal(false)}
+				onSubmit={handleAddNewTransaction}
+				expenseCategories={EXPENSE_CATEGORIES}
+				incomeCategories={INCOME_CATEGORIES}
+			/>
 		</div>
 	)
 }
