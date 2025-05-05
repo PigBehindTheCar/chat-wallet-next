@@ -30,12 +30,17 @@ interface BaseResponse {
 
 // API配置
 const API_CONFIG = {
-	baseUrl: "http://localhost:8000", // 默认为空，表示使用当前域名
+	baseUrl: "http://localhost:8000",
 }
 
 // 设置API基础URL
 export const setApiBaseUrl = (baseUrl: string): void => {
 	API_CONFIG.baseUrl = baseUrl
+}
+
+// 获取API基础URL
+export const getApiBaseUrl = (): string => {
+	return API_CONFIG.baseUrl
 }
 
 // 获取完整的API URL

@@ -17,6 +17,7 @@ import {
 	deleteTransaction,
 	addTransactionUpdateListener,
 	removeTransactionUpdateListener,
+	getApiBaseUrl,
 } from "@/app/services/transactionService"
 import { useRouter, useSearchParams } from "next/navigation"
 import DateSelectionModal from "./DateSelectionModal"
@@ -65,7 +66,7 @@ const INCOME_CATEGORIES = [
 ]
 
 // 添加自定义域名配置
-const API_DOMAIN = "http://localhost:8000" // 替换为你的自定义域名
+const API_DOMAIN = getApiBaseUrl()
 
 // 创建一个DateSelector组件来处理日期选择和URL参数
 function DateSelector({

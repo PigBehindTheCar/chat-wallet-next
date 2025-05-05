@@ -36,20 +36,24 @@ cd chat-wallet-next
 2. Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
-3. Configure environment variables
-   Create a `.env.local` file and add:
+3. Configure API base URL (optional)
 
-```
-API_DOMAIN=http://localhost:8000  # Adjust according to your backend service
+The default API base URL is `http://localhost:8000`. If your backend service runs at a different address, please modify the `API_CONFIG.baseUrl` value in the `src/app/services/transactionService.ts` file:
+
+```typescript
+// API configuration
+const API_CONFIG = {
+	baseUrl: "http://localhost:8000", // Change to your backend service address
+}
 ```
 
 4. Start the development server
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 5. Open `http://localhost:3000` in your browser
