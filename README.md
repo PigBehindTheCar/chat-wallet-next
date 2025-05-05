@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chat Wallet - Personal Expense Tracker
 
-## Getting Started
+This project is a Natural Language Processing (NLP) application designed to interact with a simple database using natural language prompts. The project leverages the Gemini framework to process user inputs and execute database operations.
 
-First, run the development server:
+Members: Luoqi Zhao, Daniel Jones, and Ryan Vera
+
+## Project Overview
+
+Chat Wallet is a modern personal expense tracking application built with Next.js and React. It allows users to record their daily income and expenses in a simple, intuitive interface and provides clear financial overviews.
+
+## Key Features
+
+- 📝 Record daily expenses and income
+- 📅 View transactions by month or year
+- 📊 View income, expense, and balance summaries
+- ✏️ Edit and delete existing transactions
+- 💬 Add transactions through natural language (connected to backend AI service)
+- 📱 Responsive design for all devices
+
+## Tech Stack
+
+- Next.js 14
+- React
+- TypeScript
+- Tailwind CSS
+
+## Installation Guide
+
+1. Clone the repository
+
+```bash
+git clone https://github.com/your-username/chat-wallet-next.git
+cd chat-wallet-next
+```
+
+2. Install dependencies
+
+```bash
+npm install
+```
+
+3. Configure environment variables
+   Create a `.env.local` file and add:
+
+```
+API_DOMAIN=http://localhost:8000  # Adjust according to your backend service
+```
+
+4. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open `http://localhost:3000` in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage Instructions
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Adding Transactions
 
-## Learn More
+- Click the "+" button at the bottom of the interface to manually add a transaction
+- Or type a natural language description in the input box (e.g., "Spent $50 on groceries on May 15th, 2025")
 
-To learn more about Next.js, take a look at the following resources:
+### Viewing Transaction History
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Click the date at the top to switch between years and months
+- View transactions and financial summaries for specific time periods
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Editing/Deleting Transactions
 
-## Deploy on Vercel
+- Click on any transaction item to edit it
+- Click the delete icon on the right side of a transaction to delete it
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Backend Service
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This application needs to connect to a backend API service for natural language processing and data storage. It's stored at another github repo.
