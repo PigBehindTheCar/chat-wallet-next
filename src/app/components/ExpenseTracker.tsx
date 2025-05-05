@@ -6,6 +6,7 @@ import React, {
 	useEffect,
 	useCallback,
 	Suspense,
+	useRef,
 } from "react"
 import Image from "next/image"
 import {
@@ -20,8 +21,9 @@ import {
 import { useRouter, useSearchParams } from "next/navigation"
 import DateSelectionModal from "./DateSelectionModal"
 import NewTransactionModal from "./NewTransactionModal"
-import BatchTransactionModal from "./BatchTransactionModal"
-import { parseNaturalLanguage } from "@/app/services/naturalLanguageParser"
+// 注释掉BatchTransactionModal相关导入
+// import BatchTransactionModal from "./BatchTransactionModal"
+// import { parseNaturalLanguage } from "@/app/services/naturalLanguageParser"
 import ConfirmationModal from "./ConfirmationModal"
 
 interface DateSelection {
@@ -61,6 +63,9 @@ const INCOME_CATEGORIES = [
 	"Refund",
 	"Other",
 ]
+
+// 添加自定义域名配置
+const API_DOMAIN = "http://localhost:8000" // 替换为你的自定义域名
 
 // 创建一个DateSelector组件来处理日期选择和URL参数
 function DateSelector({
@@ -103,10 +108,14 @@ function DateSelector({
 const ExpenseTracker: React.FC = () => {
 	const router = useRouter()
 
+	// 添加textarea引用
+	const textareaRef = useRef<HTMLTextAreaElement>(null)
+
 	const [inputMessage, setInputMessage] = useState("")
 	const [showDateModal, setShowDateModal] = useState(false)
 	const [transactions, setTransactions] = useState<Transaction[]>([])
 	const [isLoading, setIsLoading] = useState(true)
+	const [isApiSending, setIsApiSending] = useState(false)
 
 	// 新交易Modal状态
 	const [showTransactionModal, setShowTransactionModal] = useState(false)
@@ -431,45 +440,77 @@ const ExpenseTracker: React.FC = () => {
 		}
 	}, [showDateModal])
 
-	// 添加批量交易Modal的状态
-	const [showBatchModal, setShowBatchModal] = useState(false)
-	const [parsedTransactions, setParsedTransactions] = useState<Transaction[]>(
-		[]
-	)
-	const [isParsingInput, setIsParsingInput] = useState(false)
+	// 添加自动调整高度的函数
+	const adjustTextareaHeight = useCallback(() => {
+		const textarea = textareaRef.current
+		if (textarea) {
+			// 重置高度以便准确计算
+			textarea.style.height = "auto"
 
-	// Handle adding multiple transactions
-	const handleAddMultipleTransactions = async (transactions: Transaction[]) => {
-		try {
-			// Add each transaction sequentially
-			for (const transaction of transactions) {
-				// If no id or temporary id, add to database
-				if (!transaction.id || transaction.id.startsWith("temp-")) {
-					// Remove id from transaction object, as addTransaction will auto-generate id
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { id, ...transactionWithoutId } = transaction
-					await addTransaction(transactionWithoutId)
-				}
-			}
+			// 计算新高度，并限制在最小和最大高度之间
+			// 确保初始高度足够显示占位符
+			const minHeight = 60 // 提高最小高度，确保能显示两行占位符
+			const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), 80)
+			textarea.style.height = `${newHeight}px`
 
-			// Refresh transaction list
-			await refreshTransactions()
-			// Clear input
-			setInputMessage("")
-		} catch (error) {
-			console.error("Failed to add batch transactions:", error)
-			alert("Failed to add transactions. Please try again.")
+			// 设置overflow，当内容超出最大高度时允许滚动
+			textarea.style.overflowY = textarea.scrollHeight > 80 ? "auto" : "hidden"
 		}
+	}, [])
+
+	// 监听输入变化自动调整高度，并确保组件挂载时也调整一次
+	useEffect(() => {
+		adjustTextareaHeight()
+
+		// 添加一个小延迟，确保在DOM完全渲染后再次调整
+		const timer = setTimeout(() => {
+			adjustTextareaHeight()
+		}, 10)
+
+		return () => clearTimeout(timer)
+	}, [inputMessage, adjustTextareaHeight])
+
+	// 处理输入变化
+	const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		setInputMessage(e.target.value)
 	}
 
-	// Handle input submission
+	// 修改输入提交的处理函数
 	const handleInputSubmit = async () => {
 		if (!inputMessage.trim()) {
-			// If input is empty, open regular transaction modal
+			// 如果输入为空，打开常规交易modal
 			openTransactionModal()
 			return
 		}
 
+		// 添加发送GET请求的逻辑
+		try {
+			setIsApiSending(true)
+			// 编码输入内容
+			const encodedPrompt = encodeURIComponent(inputMessage.trim())
+			// 发送GET请求
+			const response = await fetch(`${API_DOMAIN}/genai/${encodedPrompt}`)
+
+			if (!response.ok) {
+				throw new Error(`API请求失败: ${response.status}`)
+			}
+
+			const data = await response.json()
+			console.log("API响应:", data)
+
+			// 请求成功后清空输入框
+			setInputMessage("")
+
+			// 请求成功后，刷新交易数据和UI
+			await refreshTransactions()
+		} catch (error) {
+			console.error("API请求出错:", error)
+			alert("发送请求失败，请重试。")
+		} finally {
+			setIsApiSending(false)
+		}
+
+		/* 注释掉原来的解析逻辑
 		try {
 			setIsParsingInput(true)
 			// Call API to parse natural language input
@@ -492,13 +533,7 @@ const ExpenseTracker: React.FC = () => {
 		} finally {
 			setIsParsingInput(false)
 		}
-	}
-
-	// 处理按回车键提交输入
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === "Enter") {
-			handleInputSubmit()
-		}
+		*/
 	}
 
 	// 处理编辑交易
@@ -879,23 +914,46 @@ const ExpenseTracker: React.FC = () => {
 				{/* Input box at the bottom */}
 				<div className="sticky bottom-0 w-full p-4 bg-white border-t border-gray-100 shadow-md">
 					<div className="flex items-center">
-						<input
-							type="text"
+						<textarea
+							ref={textareaRef}
 							value={inputMessage}
-							onChange={(e) => setInputMessage(e.target.value)}
-							onKeyDown={handleKeyDown}
-							placeholder="Add transaction or enter natural language description..."
-							className="flex-grow px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
+							onChange={handleInputChange}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && !e.shiftKey) {
+									e.preventDefault() // 防止换行
+									handleInputSubmit()
+								}
+							}}
+							placeholder='Enter the operation you want to perform on the ledger, or simply click the "Add" button to manually add a transaction.'
+							className="flex-grow px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 resize-none min-h-[60px] max-h-[80px] overflow-hidden break-words whitespace-pre-wrap"
+							rows={2}
 						/>
-						{/* Add transaction button */}
+						{/* 根据输入框内容改变按钮样式和功能 */}
 						<button
 							onClick={handleInputSubmit}
 							className="ml-2 p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-							disabled={isParsingInput}
+							disabled={isApiSending}
 						>
-							{isParsingInput ? (
+							{isApiSending ? (
 								<div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+							) : inputMessage.trim() ? (
+								// 不为空时显示发送图标
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+									/>
+								</svg>
 							) : (
+								// 为空时显示添加图标
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
 									className="h-5 w-5"
@@ -935,16 +993,6 @@ const ExpenseTracker: React.FC = () => {
 				isOpen={showTransactionModal}
 				onClose={() => setShowTransactionModal(false)}
 				onSubmit={handleAddNewTransaction}
-				expenseCategories={EXPENSE_CATEGORIES}
-				incomeCategories={INCOME_CATEGORIES}
-			/>
-
-			{/* Batch Transaction Modal */}
-			<BatchTransactionModal
-				isOpen={showBatchModal}
-				onClose={() => setShowBatchModal(false)}
-				transactions={parsedTransactions}
-				onSubmit={handleAddMultipleTransactions}
 				expenseCategories={EXPENSE_CATEGORIES}
 				incomeCategories={INCOME_CATEGORIES}
 			/>
