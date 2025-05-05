@@ -359,7 +359,8 @@ const ExpenseTracker: React.FC = () => {
 
 	// Filter transactions based on selected date
 	const filteredTransactions = useMemo(() => {
-		return transactions.filter((transaction) => {
+		// 首先过滤出符合当前所选年月的交易
+		const filtered = transactions.filter((transaction) => {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const [month, day, year] = transaction.date
 				.split(".")
@@ -372,6 +373,24 @@ const ExpenseTracker: React.FC = () => {
 
 			// If month is also selected, filter by both year and month
 			return year === selectedDate.year && month === selectedDate.month + 1
+		})
+
+		// 然后按日期从低到高排序（较早的日期显示在前面）
+		return filtered.sort((a, b) => {
+			// 解析日期字符串，格式为"MM.DD.YYYY"
+			const [aMonth, aDay, aYear] = a.date
+				.split(".")
+				.map((part) => parseInt(part))
+			const [bMonth, bDay, bYear] = b.date
+				.split(".")
+				.map((part) => parseInt(part))
+
+			// 先比较年
+			if (aYear !== bYear) return aYear - bYear
+			// 年相同则比较月
+			if (aMonth !== bMonth) return aMonth - bMonth
+			// 月相同则比较日
+			return aDay - bDay
 		})
 	}, [transactions, selectedDate])
 
