@@ -303,19 +303,40 @@ const ExpenseTracker: React.FC = () => {
 		}
 
 		try {
-			// 准备日期格式
-			const dateObj = new Date(form.date)
-			const month = dateObj.getMonth() + 1
-			const day = dateObj.getDate()
-			const year = dateObj.getFullYear()
-			const formattedDate = `${month}.${day}.${year}`
+			// 注意：直接使用form.date来避免时区转换问题
+			const dateParts = form.date.split("-")
+			const year = parseInt(dateParts[0])
+			const month = parseInt(dateParts[1])
+			const day = parseInt(dateParts[2])
 
-			// 准备星期几
-			const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-			const dayName = days[dateObj.getDay()]
+			// 使用用户输入的日期值手动构建日期字符串，确保月份和日期保持两位数格式
+			const formattedDate = `${month.toString().padStart(2, "0")}.${day
+				.toString()
+				.padStart(2, "0")}.${year}`
 
-			// 创建交易对象，根据isExpense决定金额的正负
-			const newTransaction = {
+			// 准备星期几 - 手动计算星期几而不依赖Date对象的时区问题
+			// Zeller's Congruence算法计算星期几
+			let adjustedMonth = month
+			let adjustedYear = year
+			if (month < 3) {
+				adjustedMonth += 12
+				adjustedYear -= 1
+			}
+			const h =
+				(day +
+					Math.floor((13 * (adjustedMonth + 1)) / 5) +
+					adjustedYear +
+					Math.floor(adjustedYear / 4) -
+					Math.floor(adjustedYear / 100) +
+					Math.floor(adjustedYear / 400)) %
+				7
+
+			// 转换h到对应的星期名称 (0=Sat, 1=Sun, ..., 6=Fri)
+			const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+			const dayName = days[h]
+
+			// 创建新交易对象
+			const newTransaction: Omit<Transaction, "id"> = {
 				date: formattedDate,
 				day: dayName,
 				category: form.category,
@@ -478,16 +499,37 @@ const ExpenseTracker: React.FC = () => {
 		}
 
 		try {
-			// 准备日期格式
-			const dateObj = new Date(form.date)
-			const month = dateObj.getMonth() + 1
-			const day = dateObj.getDate()
-			const year = dateObj.getFullYear()
-			const formattedDate = `${month}.${day}.${year}`
+			// 注意：直接使用form.date来避免时区转换问题
+			const dateParts = form.date.split("-")
+			const year = parseInt(dateParts[0])
+			const month = parseInt(dateParts[1])
+			const day = parseInt(dateParts[2])
 
-			// 准备星期几
-			const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-			const dayName = days[dateObj.getDay()]
+			// 使用用户输入的日期值手动构建日期字符串，确保月份和日期保持两位数格式
+			const formattedDate = `${month.toString().padStart(2, "0")}.${day
+				.toString()
+				.padStart(2, "0")}.${year}`
+
+			// 准备星期几 - 手动计算星期几而不依赖Date对象的时区问题
+			// Zeller's Congruence算法计算星期几
+			let adjustedMonth = month
+			let adjustedYear = year
+			if (month < 3) {
+				adjustedMonth += 12
+				adjustedYear -= 1
+			}
+			const h =
+				(day +
+					Math.floor((13 * (adjustedMonth + 1)) / 5) +
+					adjustedYear +
+					Math.floor(adjustedYear / 4) -
+					Math.floor(adjustedYear / 100) +
+					Math.floor(adjustedYear / 400)) %
+				7
+
+			// 转换h到对应的星期名称 (0=Sat, 1=Sun, ..., 6=Fri)
+			const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+			const dayName = days[h]
 
 			// 创建更新后的交易对象
 			const updatedTransaction: Transaction = {

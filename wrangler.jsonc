@@ -7,9 +7,7 @@
 	"name": "chat-wallet-next",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2024-09-26",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
@@ -32,7 +30,7 @@
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-	// "vars": { "MY_VARIABLE": "production_value" },
+	// "vars": { "API_HOST": "http://localhost:8000" },
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/

@@ -153,13 +153,22 @@ export const addTransaction = async (
 	transaction: Omit<Transaction, "id">
 ): Promise<Transaction | null> => {
 	try {
+		// 确保日期正确，避免时区问题导致日期减少一天
+		const correctedTransaction = { ...transaction }
+
+		// 如果只有date字段而没有day字段，则从date生成day
+		if (correctedTransaction.date && !correctedTransaction.day) {
+			// 直接从日期字符串提取天数，避免时区转换
+			correctedTransaction.day = correctedTransaction.date.split("-")[2]
+		}
+
 		// 调用API添加交易
 		const response = await fetch("/api/dummy/transactions", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify(transaction),
+			body: JSON.stringify(correctedTransaction),
 		})
 
 		const result = (await response.json()) as SingleTransactionResponse
@@ -191,14 +200,26 @@ export const updateTransaction = async (
 	transaction: Transaction
 ): Promise<Transaction | null> => {
 	try {
+		// 确保日期正确，避免时区问题导致日期减少一天
+		const correctedTransaction = { ...transaction }
+
+		// 如果只有date字段而没有day字段，则从date生成day
+		if (correctedTransaction.date && !correctedTransaction.day) {
+			// 直接从日期字符串提取天数，避免时区转换
+			correctedTransaction.day = correctedTransaction.date.split("-")[2]
+		}
+
 		// 调用API更新交易
-		const response = await fetch(`/api/dummy/transactions/${transaction.id}`, {
-			method: "PUT",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(transaction),
-		})
+		const response = await fetch(
+			`/api/dummy/transactions/${correctedTransaction.id}`,
+			{
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(correctedTransaction),
+			}
+		)
 
 		const result = (await response.json()) as SingleTransactionResponse
 
