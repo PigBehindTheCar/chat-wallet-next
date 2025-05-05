@@ -28,6 +28,21 @@ interface BaseResponse {
 	message: string
 }
 
+// API配置
+const API_CONFIG = {
+	baseUrl: "http://localhost:8000", // 默认为空，表示使用当前域名
+}
+
+// 设置API基础URL
+export const setApiBaseUrl = (baseUrl: string): void => {
+	API_CONFIG.baseUrl = baseUrl
+}
+
+// 获取完整的API URL
+const getApiUrl = (path: string): string => {
+	return `${API_CONFIG.baseUrl}${path}`
+}
+
 // 本地存储键
 const LOCAL_STORAGE_KEY = "wallet_transactions"
 const LAST_SYNC_KEY = "wallet_transactions_last_sync"
@@ -97,7 +112,7 @@ const saveLocalTransactions = (transactions: Transaction[]): void => {
  */
 const fetchTransactionsFromAPI = async (): Promise<Transaction[]> => {
 	try {
-		const response = await fetch("/api/dummy/transactions")
+		const response = await fetch(getApiUrl("/transactions"))
 		const data: TransactionResponse = await response.json()
 
 		if (data.success) {
@@ -163,7 +178,7 @@ export const addTransaction = async (
 		}
 
 		// 调用API添加交易
-		const response = await fetch("/api/dummy/transactions", {
+		const response = await fetch(getApiUrl("/transactions"), {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -211,7 +226,7 @@ export const updateTransaction = async (
 
 		// 调用API更新交易
 		const response = await fetch(
-			`/api/dummy/transactions/${correctedTransaction.id}`,
+			getApiUrl(`/transactions/${correctedTransaction.id}`),
 			{
 				method: "PUT",
 				headers: {
@@ -255,7 +270,7 @@ export const deleteTransaction = async (
 ): Promise<boolean> => {
 	try {
 		// 调用API删除交易
-		const response = await fetch(`/api/dummy/transactions/${transactionId}`, {
+		const response = await fetch(getApiUrl(`/transactions/${transactionId}`), {
 			method: "DELETE",
 		})
 
