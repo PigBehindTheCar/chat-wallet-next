@@ -29,7 +29,7 @@ Chat Wallet is a modern personal expense tracking application built with Next.js
 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/chat-wallet-next.git
+git clone https://github.com/PigBehindTheCar/chat-wallet-next.git
 cd chat-wallet-next
 ```
 
@@ -77,4 +77,4 @@ pnpm run dev
 
 ## Backend Service
 
-This application needs to connect to a backend API service for natural language processing and data storage. It's stored at another github repo.
+This application needs to connect to a backend API service for natural language processing and data storage. It's stored at [another github repo](https://github.com/DanielJones6736/NLP-Bookkeeping).
